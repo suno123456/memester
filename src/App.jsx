@@ -345,7 +345,23 @@ function ResultScreen({ result, user, onReplay }) {
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
-        <button onClick={() => { navigator.clipboard.writeText(shareText).catch(()=>{}); }} style={{background:'#FFE600',border:'none',borderRadius:12,padding:14,fontSize:13,fontWeight:900,color:'#0D0D0D',cursor:'pointer',fontFamily:"'Heebo',sans-serif"}}>העתק לטיקטוק</button>
+        <button onClick={() => {
+          // Safari-safe copy
+          try {
+            if (navigator.clipboard && window.isSecureContext) {
+              navigator.clipboard.writeText(shareText);
+            } else {
+              const ta = document.createElement('textarea');
+              ta.value = shareText;
+              ta.style.position = 'fixed';
+              ta.style.opacity = '0';
+              document.body.appendChild(ta);
+              ta.focus(); ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+            }
+          } catch {}
+        }} style={{background:'#FFE600',border:'none',borderRadius:12,padding:14,fontSize:13,fontWeight:900,color:'#0D0D0D',cursor:'pointer',fontFamily:"'Heebo',sans-serif"}}>העתק לטיקטוק</button>
         <button onClick={onReplay} style={{background:'#161616',border:'2px solid #222',borderRadius:12,padding:14,fontSize:13,fontWeight:900,color:'#fff',cursor:'pointer',fontFamily:"'Heebo',sans-serif"}}>שחק שוב</button>
       </div>
 
