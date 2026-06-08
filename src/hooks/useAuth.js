@@ -1,16 +1,28 @@
 import { useState, useEffect } from "react";
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
+import {
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "../firebase/config";
+
+function isMobile() {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
 
 export function useAuth() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getRedirectResult(auth).then(async (result) => {
-      if (result?.user) await createProfile(result.user);
-    }).catch(() => {});
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) await createProfile(result.user);
+      })
+      .catch(() => {});
 
     return onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -39,10 +51,18 @@ export function useAuth() {
 
   async function login() {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      await createProfile(result.user);
+      if (isMobile()) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        const result = await signInWithPopup(auth, googleProvider);
+        await createProfile(result.user);
+      }
     } catch (e) {
-      if (e.code === "auth/popup-blocked" || e.code === "auth/popup-closed-by-user") {
+      if (
+        e.code === "auth/popup-blocked" ||
+        e.code === "auth/popup-closed-by-user" ||
+        e.code === "auth/cancelled-popup-request"
+      ) {
         await signInWithRedirect(auth, googleProvider);
       }
     }
