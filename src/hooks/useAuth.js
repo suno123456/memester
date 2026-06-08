@@ -4,7 +4,9 @@ import {
   signInWithRedirect,
   getRedirectResult,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "../firebase/config";
@@ -18,11 +20,17 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result?.user) await createProfile(result.user);
-      })
-      .catch(() => {});
+    // Set persistence to LOCAL so session survives redirects
+    setPersistence(auth, browserLocalPersistence).then(() => {
+      // Handle redirect result after Google login
+      getRedirectResult(auth)
+        .then(async (result) => {
+          if (result?.user) {
+            await createProfile(result.user);
+          }
+        })
+        .catch(() => {});
+    });
 
     return onAuthStateChanged(auth, async (u) => {
       if (u) {
@@ -37,7 +45,8 @@ export function useAuth() {
 
   async function createProfile(u) {
     const ref = doc(db, "users", u.uid);
-    if (!(await getDoc(ref)).exists()) {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
       await setDoc(ref, {
         uid: u.uid,
         displayName: u.displayName,
@@ -51,6 +60,7 @@ export function useAuth() {
 
   async function login() {
     try {
+      await setPersistence(auth, browserLocalPersistence);
       if (isMobile()) {
         await signInWithRedirect(auth, googleProvider);
       } else {
@@ -63,6 +73,7 @@ export function useAuth() {
         e.code === "auth/popup-closed-by-user" ||
         e.code === "auth/cancelled-popup-request"
       ) {
+        await setPersistence(auth, browserLocalPersistence);
         await signInWithRedirect(auth, googleProvider);
       }
     }
